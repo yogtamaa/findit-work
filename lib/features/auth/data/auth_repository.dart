@@ -10,8 +10,14 @@ import 'auth_user.dart';
 class AuthRepository {
   AuthRepository();
 
-  /// Login email + password. Sukses -> token & user disimpan di secure storage.
-  Future<LoginResult> login({required String email, required String password}) async {
+  /// Login email + password. Sukses -> token & user disimpan sesuai preferensi
+  /// "Ingat Saya": [rememberMe]=true menyimpan permanen (survives app restart),
+  /// false menyimpan sementara (hanya di RAM, hilang saat app ditutup).
+  Future<LoginResult> login({
+    required String email,
+    required String password,
+    bool rememberMe = true,
+  }) async {
     final response = await ApiClient.dio.post(
       '/login',
       data: {'email': email.trim(), 'password': password},
@@ -19,7 +25,11 @@ class AuthRepository {
     final data = (response.data as Map)['data'] as Map?;
     if (data == null) throw ApiException('Login gagal. Silakan coba lagi.');
     final result = LoginResult.fromJson(data.cast<String, dynamic>());
-    await TokenStorage.write(result.token, jsonEncode(result.user.toJson()));
+    if (rememberMe) {
+      await TokenStorage.write(result.token, jsonEncode(result.user.toJson()));
+    } else {
+      await TokenStorage.writeVolatile(result.token, jsonEncode(result.user.toJson()));
+    }
     return result;
   }
 

@@ -68,6 +68,9 @@ Hasil build ada di: `build/app/outputs/flutter-apk/app-debug.apk`
 
 - Buka aplikasi → muncul halaman **Login Petugas**.
 - Masukkan **email** dan **password** akun petugas (dibuatkan oleh Admin HR / Supervisor Front Office).
+- Centang/isi **"Ingat Saya"** jika ingin tetap login tanpa input ulang saat aplikasi dibuka lagi (default: aktif).
+  - **Ingat Saya AKTIF** → sesi disimpan permanen, buka aplikasi langsung masuk ke Dashboard.
+  - **Ingat Saya NONAKTIF** → sesi hanya berlaku selama aplikasi terbuka; saat aplikasi ditutup, wajib login ulang.
 - Tekan tombol **Masuk**.
 - Lupa password? Hubungi admin di ekstensi 101/102 — reset hanya bisa dilakukan admin.
 

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:findit_worker/core/network/api_client.dart';
+import 'package:findit_worker/core/security/token_storage.dart';
 import 'package:findit_worker/features/auth/screens/login_screen.dart';
 import 'package:findit_worker/features/worker/screens/quick_report_form_screen.dart';
 import 'package:findit_worker/features/worker/widgets/worker_header.dart';
@@ -112,6 +113,9 @@ void main() {
   setUp(() {
     storageData = <String, String>{};
 
+    // Pastikan sesi volatile dari test sebelumnya tidak bocor ke test ini.
+    TokenStorage.resetForTest();
+
     TestWidgetsFlutterBinding.ensureInitialized().defaultBinaryMessenger
         .setMockMethodCallHandler(
       const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
@@ -149,9 +153,62 @@ void main() {
 
   testWidgets('Worker app opens on login screen first', (WidgetTester tester) async {
     await tester.pumpWidget(const WorkerApp());
+    // AuthGate mengecek sesi tersimpan secara async -> tunggu tuntas.
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
 
     expect(find.text('Login Petugas'), findsOneWidget);
     expect(find.text('Masuk ➔'), findsOneWidget);
+    expect(find.text('+ Catat Barang Temuan'), findsNothing);
+  });
+
+  testWidgets('Auto-login ke Dashboard saat sesi "Ingat Saya" tersimpan', (WidgetTester tester) async {
+    storageData['findit_jwt_token'] = 'saved-token-abc';
+    storageData['findit_user_json'] = jsonEncode({
+      'id': 1,
+      'name': 'Siti Nurhaliza',
+      'email': 'siti@grandmelia.co.id',
+    });
+
+    await tester.pumpWidget(const WorkerApp());
+    await tester.pumpAndSettle();
+
+    // Tanpa login ulang, langsung masuk ke dasbor petugas.
+    expect(find.text('Login Petugas'), findsNothing);
+    expect(find.text('+ Catat Barang Temuan'), findsOneWidget);
+  });
+
+  testWidgets('Login tanpa "Ingat Saya" tidak tersimpan setelah app ditutup', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(const WorkerApp());
+    await tester.pumpAndSettle();
+
+    // Matikan "Ingat Saya" lalu login.
+    await tester.enterText(find.byType(TextField).at(0), 'siti@grandmelia.co.id');
+    await tester.enterText(find.byType(TextField).at(1), 'password123');
+    await tester.tap(find.byType(Checkbox));
+    await tester.pump();
+    await tester.tap(find.text('Masuk ➔'));
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    expect(find.text('+ Catat Barang Temuan'), findsOneWidget);
+    // Sesi tidak disimpan permanen -> secure storage tetap kosong.
+    expect(storageData['findit_jwt_token'], isNull);
+    expect(storageData['findit_user_json'], isNull);
+
+    // Simulasi tutup & buka aplikasi lagi: harus minta login.
+    TokenStorage.resetForTest(); // proses app restart -> RAM bersih
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(const WorkerApp());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Login Petugas'), findsOneWidget);
     expect(find.text('+ Catat Barang Temuan'), findsNothing);
   });
 

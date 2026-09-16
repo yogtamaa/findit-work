@@ -26,6 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final _auth = AuthRepository();
   bool _obscurePassword = true;
+  bool _rememberMe = true;
   bool _submitting = false;
 
   @override
@@ -46,6 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await _auth.login(
         email: _emailController.text,
         password: _passwordController.text,
+        rememberMe: _rememberMe,
       );
       if (!mounted) return;
       Navigator.pushReplacement(
@@ -296,15 +298,28 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               validator: _required('Password wajib diisi'),
             ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: _showForgotPasswordDialog,
-                style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 6)),
-                child: const Text('Lupa Password?', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _orange)),
-              ),
+            Row(
+              children: [
+                Checkbox(
+                  value: _rememberMe,
+                  activeColor: _navy,
+                  side: const BorderSide(color: Color(0xFFCBD5E1)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  onChanged: (v) => setState(() => _rememberMe = v ?? false),
+                ),
+                const Text(
+                  'Ingat Saya',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                ),
+                const Spacer(),
+                TextButton(
+                  onPressed: _showForgotPasswordDialog,
+                  style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 6)),
+                  child: const Text('Lupa Password?', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _orange)),
+                ),
+              ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 10),
             SizedBox(
               height: 54,
               child: FilledButton(
