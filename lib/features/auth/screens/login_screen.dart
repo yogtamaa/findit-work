@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/network/api_exception.dart';
 import '../../worker/screens/worker_dashboard_screen.dart';
+import '../data/auth_repository.dart';
 import '../widgets/auth_text_field.dart';
 
 const _darkNavy = Color(0xFF0A192F);
@@ -9,8 +11,8 @@ const _orange = Color(0xFFFF9F1C);
 
 /// Halaman Login internal petugas (FindIt! Worker).
 ///
-/// Menyusun layout utama: header gradasi + card form. Field memakai
-/// [AuthTextField]; login langsung membawa ke dashboard.
+/// Login memakai email + password ke backend `POST /api/login`.
+/// Token JWT hasil login disimpan lewat [AuthRepository] (secure storage).
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -20,14 +22,16 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _idController = TextEditingController(text: 'HK-84920');
-  final _pinController = TextEditingController();
-  bool _obscurePin = true;
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _auth = AuthRepository();
+  bool _obscurePassword = true;
+  bool _submitting = false;
 
   @override
   void dispose() {
-    _idController.dispose();
-    _pinController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -35,15 +39,35 @@ class _LoginScreenState extends State<LoginScreen> {
     return (v) => (v == null || v.trim().isEmpty) ? message : null;
   }
 
-  void _login() {
+  Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const WorkerDashboardScreen()),
-    );
+    setState(() => _submitting = true);
+    try {
+      await _auth.login(
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const WorkerDashboardScreen()),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Terjadi kesalahan. Silakan coba lagi.')),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
   }
 
-  void _showForgotPinDialog() {
+  void _showForgotPasswordDialog() {
     showDialog<void>(
       context: context,
       builder: (ctx) => Dialog(
@@ -69,7 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(width: 12),
                   const Expanded(
                     child: Text(
-                      'Lupa PIN / Password?',
+                      'Lupa Password?',
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
@@ -87,7 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Text(
-                  'Demi keamanan sistem internal hotel, pembuatan ulang (reset) PIN atau password hanya dapat dilakukan oleh Admin HR / Supervisor Front Office.',
+                  'Demi keamanan sistem internal hotel, pembuatan ulang password hanya dapat dilakukan oleh Admin HR / Supervisor Front Office.',
                   style: TextStyle(fontSize: 12, height: 1.5, color: Color(0xFF334155)),
                 ),
               ),
@@ -104,7 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 6),
               _stepList(
                 '2',
-                'Sertakan ID Karyawan Anda.',
+                'Sertakan email akun Anda.',
               ),
               const SizedBox(height: 18),
               SizedBox(
@@ -239,43 +263,45 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Masuk dengan ID Karyawan & PIN Anda',
+              'Masuk dengan email & password akun Anda',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
             ),
             const SizedBox(height: 22),
             AuthTextField(
-              controller: _idController,
-              hint: 'ID Karyawan (HK-84920)',
-              icon: Icons.badge_outlined,
+              controller: _emailController,
+              hint: 'Email (contoh: staff@hotel.com)',
+              icon: Icons.mail_outline,
+              keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
-              suffix: const Icon(Icons.check_circle, size: 20, color: _orange),
-              validator: _required('ID Karyawan wajib diisi'),
+              validator: _required('Email wajib diisi'),
             ),
             const SizedBox(height: 14),
             AuthTextField(
-              controller: _pinController,
-              hint: 'Password / PIN',
+              controller: _passwordController,
+              hint: 'Password',
               icon: Icons.lock_outline,
-              obscureText: _obscurePin,
+              obscureText: _obscurePassword,
               textInputAction: TextInputAction.done,
-              onFieldSubmitted: (_) => _login(),
+              onFieldSubmitted: (_) {
+                if (!_submitting) _login();
+              },
               suffix: IconButton(
                 icon: Icon(
-                  _obscurePin ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                   size: 20,
                   color: const Color(0xFF64748B),
                 ),
-                onPressed: () => setState(() => _obscurePin = !_obscurePin),
+                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
               ),
-              validator: _required('Password / PIN wajib diisi'),
+              validator: _required('Password wajib diisi'),
             ),
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
-                onPressed: _showForgotPinDialog,
+                onPressed: _showForgotPasswordDialog,
                 style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 6)),
-                child: const Text('Lupa PIN?', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _orange)),
+                child: const Text('Lupa Password?', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _orange)),
               ),
             ),
             const SizedBox(height: 18),
@@ -287,8 +313,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
-                onPressed: _login,
-                child: const Text('Masuk ➔', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                onPressed: _submitting ? null : _login,
+                child: _submitting
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                      )
+                    : const Text('Masuk ➔', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
               ),
             ),
             const SizedBox(height: 14),

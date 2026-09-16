@@ -1,23 +1,19 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 
+import '../../../core/network/api_config.dart';
 import '../models/found_item_model.dart';
 import '../theme/app_colors.dart';
 
 /// Card barang temuan untuk daftar riwayat di Dashboard Petugas.
 ///
-/// Menampilkan foto/placeholder, nama barang, badge status, tag kategori,
-/// waktu relatif, dan ikon panah.
+/// Menampilkan foto (lokal atau dari server), nama barang, badge status,
+/// tag kategori, waktu relatif, dan ikon panah.
 class FoundItemCard extends StatelessWidget {
   const FoundItemCard({super.key, required this.item, this.onTap});
 
   final FoundItemModel item;
   final VoidCallback? onTap;
-
-  String _roomTitle() {
-    final m = RegExp(r'Room (\d+)').firstMatch(item.location);
-    return m != null ? 'Kamar ${m.group(1)}' : item.location;
-  }
 
   String _timeLabel() {
     final diff = DateTime.now().difference(item.foundDate);
@@ -36,12 +32,40 @@ class FoundItemCard extends StatelessWidget {
     return '$rel ($hh:$mm)';
   }
 
+  Widget _thumbnail() {
+    if (item.photoPath != null) {
+      return Image.file(File(item.photoPath!), width: 64, height: 64, fit: BoxFit.cover);
+    }
+    final photoUrl = item.photoUrl;
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      return Image.network(
+        ApiConfig.resolve(photoUrl),
+        width: 64,
+        height: 64,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _placeholder(),
+        loadingBuilder: (_, child, progress) {
+          return progress == null ? child : _placeholder();
+        },
+      );
+    }
+    return _placeholder();
+  }
+
+  Widget _placeholder() {
+    return Container(
+      width: 64,
+      height: 64,
+      color: const Color(0xFFE6ECF9),
+      child: const Icon(Icons.inventory_2_outlined, color: AppColors.navy, size: 26),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final claimed = item.status == FoundItemStatus.claimed;
+    final claimed = item.isClaimed;
     final statusBg = claimed ? AppColors.greenSoft : const Color(0xFFFFF0DC);
     final statusFg = claimed ? AppColors.greenStrong : const Color(0xFFB45309);
-    final statusText = claimed ? '● Selesai' : '● Belum Diklaim';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -65,14 +89,7 @@ class FoundItemCard extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: item.photoPath != null
-                  ? Image.file(File(item.photoPath!), width: 64, height: 64, fit: BoxFit.cover)
-                  : Container(
-                      width: 64,
-                      height: 64,
-                      color: const Color(0xFFE6ECF9),
-                      child: const Icon(Icons.inventory_2_outlined, color: AppColors.navy, size: 26),
-                    ),
+              child: _thumbnail(),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -83,7 +100,7 @@ class FoundItemCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          _roomTitle(),
+                          item.roomLabel,
                           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.navy),
                         ),
                       ),
@@ -91,7 +108,7 @@ class FoundItemCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(color: statusBg, borderRadius: BorderRadius.circular(20)),
                         child: Text(
-                          statusText,
+                          item.statusLabel,
                           style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: statusFg),
                         ),
                       ),
@@ -107,8 +124,10 @@ class FoundItemCard extends StatelessWidget {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      _tag(item.category.label, AppColors.softBlueBg, AppColors.navy),
-                      const SizedBox(width: 6),
+                      if (item.category.isNotEmpty) ...[
+                        _tag(item.category, AppColors.softBlueBg, AppColors.navy),
+                        const SizedBox(width: 6),
+                      ],
                       _tag('Oleh Anda', const Color(0xFFF1F5F9), AppColors.ink),
                     ],
                   ),

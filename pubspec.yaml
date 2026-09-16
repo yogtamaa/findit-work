@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.13.3
+  sdk: ^3.9.0
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -37,6 +37,13 @@ dependencies:
 
   # Dipakai untuk fitur ambil/pilih foto barang di modul Worker Dashboard.
   image_picker: ^1.0.7
+
+  # HTTP client untuk komunikasi dengan backend FindIt API (dio: interceptor
+  # untuk token & error handling terpusat).
+  dio: ^5.7.0
+
+  # Penyimpanan token JWT & data user dengan aman (encrypted storage).
+  flutter_secure_storage: ^9.2.2
 
 dev_dependencies:
   flutter_test:

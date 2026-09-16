@@ -1,29 +1,29 @@
 import 'package:flutter/material.dart';
 
-import '../../auth/screens/login_screen.dart';
+import '../../auth/data/auth_user.dart';
 import '../theme/app_colors.dart';
 
 /// Modal bottom sheet profil petugas.
 ///
-/// Menampilkan identitas petugas (nama, email, WhatsApp) dan tombol Logout.
-/// Dipanggil dari header dashboard petugas.
+/// Menampilkan identitas petugas (nama, email, role) dari hasil login
+/// dan tombol Logout. [onLogout] diserahkan ke pemanggil supaya bisa
+/// membersihkan token sebelum navigasi kembali ke Login.
 class WorkerProfileSheet extends StatelessWidget {
-  const WorkerProfileSheet({super.key});
+  const WorkerProfileSheet({super.key, this.user, this.onLogout});
 
-  static Future<void> show(BuildContext context) {
+  final AuthUser? user;
+  final VoidCallback? onLogout;
+
+  static Future<void> show(
+    BuildContext context, {
+    AuthUser? user,
+    VoidCallback? onLogout,
+  }) {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => const WorkerProfileSheet(),
-    );
-  }
-
-  void _logout(BuildContext context) {
-    Navigator.of(context).pop();
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (route) => false,
+      builder: (_) => WorkerProfileSheet(user: user, onLogout: onLogout),
     );
   }
 
@@ -64,33 +64,35 @@ class WorkerProfileSheet extends StatelessWidget {
                   child: const Icon(Icons.person, color: Colors.white, size: 28),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Siti Nurhaliza',
-                        style: TextStyle(
+                        user?.name ?? 'Petugas',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
                           color: AppColors.navy,
                         ),
                       ),
-                      SizedBox(height: 3),
+                      const SizedBox(height: 3),
                       Text(
-                        'Petugas Housekeeping',
-                        style: TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
+                        user?.role ?? 'Petugas Housekeeping',
+                        style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
                       ),
                     ],
                   ),
                 ),
-                Icon(Icons.verified_user_outlined, size: 20, color: AppColors.greenStrong),
+                const Icon(Icons.verified_user_outlined, size: 20, color: AppColors.greenStrong),
               ],
             ),
             const SizedBox(height: 16),
-            _infoTile(Icons.email_outlined, 'Email', 'siti.nurhaliza@grandmelia.co.id'),
+            _infoTile(Icons.email_outlined, 'Email', user?.email ?? '-'),
             const SizedBox(height: 10),
-            _infoTile(Icons.phone_android_outlined, 'WhatsApp', '+62 812-3456-7890'),
+            _infoTile(Icons.phone_android_outlined, 'WhatsApp', user?.phone ?? '-'),
             const SizedBox(height: 18),
             const Divider(height: 1, color: Color(0xFFE4E9F7)),
             const SizedBox(height: 16),
@@ -102,7 +104,10 @@ class WorkerProfileSheet extends StatelessWidget {
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
-                onPressed: () => _logout(context),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  onLogout?.call();
+                },
                 icon: const Icon(Icons.logout, size: 20),
                 label: const Text(
                   'Logout',

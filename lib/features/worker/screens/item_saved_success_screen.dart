@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../models/found_item_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/auto_return_countdown.dart';
 import '../widgets/item_saved_card.dart';
@@ -12,11 +13,17 @@ import 'quick_report_form_screen.dart';
 
 /// Layar sukses setelah barang tersimpan (Petugas - Item Saved).
 ///
-/// Menampilkan [SavedSuccessIntro], [TicketRegistrationCard],
-/// [ItemSavedCard], [AutoReturnCountdown], serta aksi kembali ke Beranda /
-/// catat barang lain.
+/// Menampilkan tiket dari `report_identifier` backend dan detail barang
+/// yang beneran tersimpan (nama, kategori, kamar, waktu, petugas), bukan
+/// teks hardcoded.
 class ItemSavedSuccessScreen extends StatefulWidget {
-  const ItemSavedSuccessScreen({super.key});
+  const ItemSavedSuccessScreen({super.key, this.item, this.staffName = ''});
+
+  /// Laporan yang baru dibuat di backend.
+  final FoundItemModel? item;
+
+  /// Nama petugas yang melapor (dari session login).
+  final String staffName;
 
   @override
   State<ItemSavedSuccessScreen> createState() => _ItemSavedSuccessScreenState();
@@ -64,8 +71,28 @@ class _ItemSavedSuccessScreenState extends State<ItemSavedSuccessScreen> {
     );
   }
 
+  String get _ticketNo {
+    final id = widget.item?.reportIdentifier ?? '';
+    return id.isEmpty ? '' : '#$id';
+  }
+
+  String get _timeLabel {
+    final dt = widget.item?.foundDate ?? DateTime.now();
+    final hh = dt.hour.toString().padLeft(2, '0');
+    final mm = dt.minute.toString().padLeft(2, '0');
+    final ss = dt.second.toString().padLeft(2, '0');
+    return '$hh:$mm:$ss WIB';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final item = widget.item;
+    final staff = widget.staffName.isEmpty ? 'Petugas' : widget.staffName;
+    final isClaimed = item?.isClaimed ?? false;
+    final badge = item == null
+        ? 'Barang Temuan'
+        : [item.category, item.roomLabel].where((s) => s.isNotEmpty).join(' • ');
+
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
@@ -79,9 +106,18 @@ class _ItemSavedSuccessScreenState extends State<ItemSavedSuccessScreen> {
                 children: [
                   const SavedSuccessIntro(),
                   const SizedBox(height: 16),
-                  TicketRegistrationCard(onCopy: _copyTicket),
+                  TicketRegistrationCard(ticketNo: _ticketNo, onCopy: _copyTicket),
                   const SizedBox(height: 14),
-                  const ItemSavedCard(),
+                  ItemSavedCard(
+                    badge: badge,
+                    title: item?.name ?? '',
+                    description: item?.description ?? '',
+                    location: item?.roomLabel ?? '',
+                    timeValue: _timeLabel,
+                    staffValue: staff,
+                    statusText: isClaimed ? 'Sudah Diambil Tamu' : 'Menunggu Verifikasi Front Office',
+                    statusPill: isClaimed ? 'Selesai' : 'Baru',
+                  ),
                   const SizedBox(height: 16),
                   AutoReturnCountdown(seconds: _seconds, total: 10),
                   const SizedBox(height: 20),
@@ -141,7 +177,7 @@ class _ItemSavedSuccessScreenState extends State<ItemSavedSuccessScreen> {
             Icon(Icons.photo_camera_outlined, size: 18, color: AppColors.navy),
             SizedBox(width: 8),
             Text(
-              '+ Catat Barang Lainnya di Kamar 314',
+              '+ Catat Barang Lainnya',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
             ),
           ],

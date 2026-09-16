@@ -1,16 +1,22 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+
+import '../../../core/network/api_config.dart';
 import '../models/found_item_model.dart';
 
-Future<void> showFoundItemDetail(
-    BuildContext context, {
-      required FoundItemModel item,
-      required VoidCallback onMarkClaimed,
-    }) {
+/// Modal bottom sheet detail barang temuan.
+///
+/// Mengembalikan `true` bila RA menandai barang sudah diambil tamu
+/// (dan update ke backend sukses), selain itu `null`/`false`.
+Future<bool?> showFoundItemDetail(
+  BuildContext context, {
+  required FoundItemModel item,
+  required Future<bool> Function() onMarkClaimed,
+}) async {
   const navy = Color(0xFF1E3A8A);
-  final isClaimed = item.status == FoundItemStatus.claimed;
+  final isClaimed = item.isClaimed;
 
-  return showModalBottomSheet(
+  return showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -38,23 +44,25 @@ Future<void> showFoundItemDetail(
                   ),
                 ),
                 const SizedBox(height: 16),
-                if (item.photoPath != null)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: Image.file(File(item.photoPath!), height: 160, width: double.infinity, fit: BoxFit.cover),
-                  ),
+                _photo(item),
                 const SizedBox(height: 14),
                 Text(item.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   children: [
-                    Chip(label: Text(item.category.label), backgroundColor: navy.withValues(alpha: 0.08)),
-                    Chip(label: Text(item.color), backgroundColor: Colors.grey.shade100),
+                    if (item.category.isNotEmpty)
+                      Chip(label: Text(item.category), backgroundColor: navy.withValues(alpha: 0.08)),
+                    if (item.roomLabel.isNotEmpty)
+                      Chip(label: Text(item.roomLabel), backgroundColor: Colors.grey.shade100),
                   ],
                 ),
                 const SizedBox(height: 16),
                 _detailRow(Icons.location_on_outlined, 'Lokasi Ditemukan', item.location),
+                if (item.reportIdentifier != null && item.reportIdentifier!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _detailRow(Icons.confirmation_number_outlined, 'No. Registrasi', item.reportIdentifier!),
+                ],
                 const SizedBox(height: 12),
                 _detailRow(Icons.notes_outlined, 'Deskripsi', item.description),
                 const SizedBox(height: 20),
@@ -63,9 +71,9 @@ Future<void> showFoundItemDetail(
                     width: double.infinity,
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(vertical: 14)),
-                      onPressed: () {
-                        onMarkClaimed();
-                        Navigator.pop(ctx);
+                      onPressed: () async {
+                        final ok = await onMarkClaimed();
+                        if (ctx.mounted) Navigator.pop(ctx, ok);
                       },
                       icon: const Icon(Icons.check_circle_outline),
                       label: const Text('Tandai Sudah Diambil Tamu'),
@@ -89,6 +97,42 @@ Future<void> showFoundItemDetail(
         },
       );
     },
+  );
+}
+
+Widget _photo(FoundItemModel item) {
+  final photoPath = item.photoPath;
+  if (photoPath != null) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Image.file(File(photoPath), height: 160, width: double.infinity, fit: BoxFit.cover),
+    );
+  }
+  final photoUrl = item.photoUrl;
+  if (photoUrl != null && photoUrl.isNotEmpty) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Image.network(
+        ApiConfig.resolve(photoUrl),
+        height: 160,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _photoPlaceholder(),
+        loadingBuilder: (_, child, progress) {
+          return progress == null ? child : _photoPlaceholder();
+        },
+      ),
+    );
+  }
+  return _photoPlaceholder();
+}
+
+Widget _photoPlaceholder() {
+  return Container(
+    height: 160,
+    width: double.infinity,
+    color: const Color(0xFFE6ECF9),
+    child: const Icon(Icons.inventory_2_outlined, color: Color(0xFF00236F), size: 34),
   );
 }
 
