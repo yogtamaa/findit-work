@@ -9,6 +9,7 @@ import '../theme/app_colors.dart';
 import '../widgets/category_grid_selector.dart';
 import '../widgets/photo_upload_card.dart';
 import '../widgets/report_datetime_field.dart';
+import '../widgets/report_location_field.dart';
 import '../widgets/report_text_field.dart';
 import '../widgets/worker_header.dart';
 import 'item_saved_success_screen.dart';
@@ -46,6 +47,7 @@ class _QuickReportFormScreenState extends State<QuickReportFormScreen> {
 
   final _nameCtrl = TextEditingController();
   final _roomCtrl = TextEditingController();
+  final _locationCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
 
   // Foto & auto-fill
@@ -94,6 +96,7 @@ class _QuickReportFormScreenState extends State<QuickReportFormScreen> {
   void dispose() {
     _nameCtrl.dispose();
     _roomCtrl.dispose();
+    _locationCtrl.dispose();
     _descCtrl.dispose();
     super.dispose();
   }
@@ -203,7 +206,9 @@ class _QuickReportFormScreenState extends State<QuickReportFormScreen> {
 
     try {
       final room = _roomCtrl.text.trim();
-      final location = room.isEmpty ? '' : 'Kamar $room';
+      // Lokasi Ditemukan terpisah dari Nomor Kamar. Opsional: kalau kosong
+      // kirim string kosong, JANGAN fallback ke nomor kamar (bug lama).
+      final location = _locationCtrl.text.trim();
 
       // FOTO HARUS UPLOAD TEPAT 1X:
       // - auto-fill sukses -> photo_url sudah ada, TIDAK upload ulang.
@@ -302,6 +307,13 @@ class _QuickReportFormScreenState extends State<QuickReportFormScreen> {
                     controller: _roomCtrl,
                     keyboardType: TextInputType.number,
                     prefixIcon: const Icon(Icons.meeting_room_outlined, size: 20, color: AppColors.navy),
+                  ),
+                  const SizedBox(height: 20),
+                  ReportLocationField(
+                    label: 'Lokasi Ditemukan',
+                    hint: 'Tuliskan letak perkiraan terakhir...',
+                    controller: _locationCtrl,
+                    prefixIcon: const Icon(Icons.location_on_outlined, size: 20, color: AppColors.navy),
                   ),
                   const SizedBox(height: 20),
                   ReportDateTimeField(

@@ -13,7 +13,7 @@ class ApiConfig {
   );
 
   /// Endpoint dikelompokkan di `/api`.
-  static const String apiPrefix = '/api';
+  static const String apiPrefix = '/api';   
 
   /// Menghasilkan URL lengkap dari path relatif seperti `/uploads/abc.jpg`
   /// atau `/api/health`. Kalau sudah URL absolut, langsung dikembalikan.
